@@ -1,10 +1,8 @@
 package com.lesliefang.janusdemo2;
 
-import android.Manifest;
 import android.os.Bundle;
 import android.util.Log;
 
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.lesliefang.janusdemo2.janus.JanusClient;
@@ -13,7 +11,9 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.webrtc.AudioSource;
 import org.webrtc.AudioTrack;
+import org.webrtc.Camera1Enumerator;
 import org.webrtc.Camera2Enumerator;
+import org.webrtc.CameraEnumerator;
 import org.webrtc.DataChannel;
 import org.webrtc.DefaultVideoDecoderFactory;
 import org.webrtc.DefaultVideoEncoderFactory;
@@ -38,9 +38,6 @@ import org.webrtc.VideoTrack;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
-
-import pub.devrel.easypermissions.AfterPermissionGranted;
-import pub.devrel.easypermissions.EasyPermissions;
 
 public class EchoTestActivity extends AppCompatActivity {
     private static final String TAG = "EchoTestActivity";
@@ -67,13 +64,7 @@ public class EchoTestActivity extends AppCompatActivity {
         surfaceViewRendererLocal = findViewById(R.id.surfaceviewrender_local);
         surfaceViewRendererRemote = findViewById(R.id.surfaceviewrender_remote);
 
-        Camera2Enumerator camera2Enumerator = new Camera2Enumerator(this);
-        String[] deviceNames = camera2Enumerator.getDeviceNames();
-        for (String deviceName : deviceNames) {
-            if (camera2Enumerator.isFrontFacing(deviceName)) {
-                videoCapturer = camera2Enumerator.createCapturer(deviceName, null);
-            }
-        }
+        videoCapturer = createVideoCapturer();
         if (videoCapturer == null) {
             return;
         }
@@ -184,15 +175,8 @@ public class EchoTestActivity extends AppCompatActivity {
         }
     };
 
-    @AfterPermissionGranted(100)
     private void startEcho() {
-        String[] perms = {Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO};
-        if (EasyPermissions.hasPermissions(this, perms)) {
-            janusClient.connect();
-        } else {
-            EasyPermissions.requestPermissions(this, "需要相机和录音权限",
-                    100, perms);
-        }
+        janusClient.connect();
     }
 
     private void stopEcho() {
@@ -232,10 +216,39 @@ public class EchoTestActivity extends AppCompatActivity {
         janusClient.disConnect();
     }
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        EasyPermissions.onRequestPermissionsResult(requestCode, permissions, grantResults, this);
+    private VideoCapturer createVideoCapturer() {
+        if (Camera2Enumerator.isSupported(this)) {
+            return createCameraCapturer(new Camera2Enumerator(this));
+        } else {
+            return createCameraCapturer(new Camera1Enumerator(true));
+        }
+    }
+
+    private VideoCapturer createCameraCapturer(CameraEnumerator enumerator) {
+        final String[] deviceNames = enumerator.getDeviceNames();
+
+        // First, try to find front facing camera
+        Log.d(TAG, "Looking for front facing cameras.");
+        for (String deviceName : deviceNames) {
+            if (enumerator.isFrontFacing(deviceName)) {
+                VideoCapturer videoCapturer = enumerator.createCapturer(deviceName, null);
+                if (videoCapturer != null) {
+                    return videoCapturer;
+                }
+            }
+        }
+
+        // Front facing camera not found, try something else
+        Log.d(TAG, "Looking for other cameras.");
+        for (String deviceName : deviceNames) {
+            if (!enumerator.isFrontFacing(deviceName)) {
+                VideoCapturer videoCapturer = enumerator.createCapturer(deviceName, null);
+                if (videoCapturer != null) {
+                    return videoCapturer;
+                }
+            }
+        }
+        return null;
     }
 
     private PeerConnectionFactory createPeerConnectionFactory() {
