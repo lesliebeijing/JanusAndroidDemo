@@ -148,6 +148,31 @@ public class JanusClient implements WebSocketChannel.WebSocketCallback {
         webSocketChannel.sendMessage(message.toString());
     }
 
+    public void publish(BigInteger handleId, SessionDescription sdp) {
+        JSONObject message = new JSONObject();
+        try {
+            JSONObject publish = new JSONObject();
+            publish.putOpt("request", "publish");
+            publish.putOpt("audio", true);
+            publish.putOpt("video", true);
+
+            JSONObject jsep = new JSONObject();
+            jsep.putOpt("type", sdp.type);
+            jsep.putOpt("sdp", sdp.description);
+
+            message.putOpt("janus", "message");
+            message.putOpt("body", publish);
+            message.putOpt("jsep", jsep);
+            message.putOpt("transaction", randomString(12));
+            message.putOpt("session_id", sessionId);
+            message.putOpt("handle_id", handleId);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+        webSocketChannel.sendMessage(message.toString());
+    }
+
     public void trickleCandidate(BigInteger handleId, IceCandidate iceCandidate) {
         JSONObject candidate = new JSONObject();
         JSONObject message = new JSONObject();
@@ -181,6 +206,27 @@ public class JanusClient implements WebSocketChannel.WebSocketCallback {
         } catch (JSONException e) {
             e.printStackTrace();
         }
+        webSocketChannel.sendMessage(message.toString());
+    }
+
+    public void joinRoom(BigInteger handleId, int roomId, String displayName) {
+        JSONObject message = new JSONObject();
+        JSONObject body = new JSONObject();
+        try {
+            body.putOpt("display", displayName);
+            body.putOpt("ptype", "publisher");
+            body.putOpt("request", "join");
+            body.putOpt("room", roomId);
+            message.put("body", body);
+
+            message.putOpt("janus", "message");
+            message.putOpt("transaction", randomString(12));
+            message.putOpt("session_id", sessionId);
+            message.putOpt("handle_id", handleId);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
         webSocketChannel.sendMessage(message.toString());
     }
 
@@ -295,7 +341,7 @@ public class JanusClient implements WebSocketChannel.WebSocketCallback {
         keepAliveThread = new Thread(new Runnable() {
             @Override
             public void run() {
-                while (isKeepAliveRunning) {
+                while (isKeepAliveRunning && !Thread.interrupted()) {
                     try {
                         Thread.sleep(25000);
                     } catch (InterruptedException ex) {
