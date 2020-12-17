@@ -1,42 +1,30 @@
 package com.lesliefang.janusdemo2.entity;
 
-import java.util.Objects;
+import java.math.BigInteger;
 
 /**
  * Created by fanglin on 2020/12/14.
  */
 public class Publisher {
-    private Long id;
+    private BigInteger id;
     private String display;
+
+    private BigInteger handleId;
 
     public Publisher() {
 
     }
 
-    public Publisher(Long id, String display) {
+    public Publisher(BigInteger id, String display) {
         this.id = id;
         this.display = display;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Publisher publisher = (Publisher) o;
-        return id.equals(publisher.id) &&
-                display.equals(publisher.display);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(id, display);
-    }
-
-    public Long getId() {
+    public BigInteger getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(BigInteger id) {
         this.id = id;
     }
 
@@ -48,11 +36,20 @@ public class Publisher {
         this.display = display;
     }
 
+    public BigInteger getHandleId() {
+        return handleId;
+    }
+
+    public void setHandleId(BigInteger handleId) {
+        this.handleId = handleId;
+    }
+
     @Override
     public String toString() {
         return "Publisher{" +
                 "id=" + id +
                 ", display='" + display + '\'' +
+                ", handleId=" + handleId +
                 '}';
     }
 }

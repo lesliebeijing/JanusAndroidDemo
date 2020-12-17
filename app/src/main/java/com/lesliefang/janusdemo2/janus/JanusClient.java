@@ -124,7 +124,40 @@ public class JanusClient implements WebSocketChannel.WebSocketCallback {
         }
     }
 
-    public void publisherCreateOffer(BigInteger handleId, SessionDescription sdp) {
+    /**
+     * attach 到发布者的 handler 上，准备接收视频流
+     * 每个发布者都要 attach 一遍，然后协商 sdp, SFU
+     *
+     * @param feedId
+     */
+    public void subscribeAttach(BigInteger feedId) {
+        String tid = randomString(12);
+        transactions.put(tid, new Transaction(tid, feedId) {
+            @Override
+            public void onSuccess(JSONObject msg, BigInteger feedId) throws Exception {
+                JSONObject data = msg.getJSONObject("data");
+                BigInteger handleId = new BigInteger(data.getString("id"));
+                if (janusCallback != null) {
+                    janusCallback.onSubscribeAttached(handleId, feedId);
+                }
+                PluginHandle handle = new PluginHandle(handleId);
+                attachedPlugins.put(handleId, handle);
+            }
+        });
+
+        try {
+            JSONObject obj = new JSONObject();
+            obj.put("janus", "attach");
+            obj.put("transaction", tid);
+            obj.put("plugin", "janus.plugin.videoroom");
+            obj.put("session_id", sessionId);
+            webSocketChannel.sendMessage(obj.toString());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void createOffer(BigInteger handleId, SessionDescription sdp) {
         JSONObject message = new JSONObject();
         try {
             JSONObject publish = new JSONObject();
@@ -141,6 +174,38 @@ public class JanusClient implements WebSocketChannel.WebSocketCallback {
             message.putOpt("transaction", randomString(12));
             message.putOpt("session_id", sessionId);
             message.putOpt("handle_id", handleId);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+        webSocketChannel.sendMessage(message.toString());
+    }
+
+    /**
+     * 开始订阅
+     *
+     * @param subscriptionHandleId
+     * @param sdp
+     */
+    public void subscriptionStart(BigInteger subscriptionHandleId, int roomId, SessionDescription sdp) {
+        JSONObject message = new JSONObject();
+        try {
+            JSONObject body = new JSONObject();
+            body.putOpt("request", "start");
+            body.putOpt("room", roomId);
+
+            message.putOpt("janus", "message");
+            message.putOpt("body", body);
+            message.putOpt("transaction", randomString(12));
+            message.putOpt("session_id", sessionId);
+            message.putOpt("handle_id", subscriptionHandleId);
+
+            if (sdp != null) {
+                JSONObject jsep = new JSONObject();
+                jsep.putOpt("type", sdp.type);
+                jsep.putOpt("sdp", sdp.description);
+                message.putOpt("jsep", jsep);
+            }
         } catch (JSONException e) {
             e.printStackTrace();
         }
@@ -166,6 +231,33 @@ public class JanusClient implements WebSocketChannel.WebSocketCallback {
             message.putOpt("transaction", randomString(12));
             message.putOpt("session_id", sessionId);
             message.putOpt("handle_id", handleId);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+        webSocketChannel.sendMessage(message.toString());
+    }
+
+    /**
+     * 订阅
+     *
+     * @param roomId 房间ID
+     * @param feedId 要订阅的ID
+     */
+    public void subscribe(BigInteger subscriptionHandleId, int roomId, BigInteger feedId) {
+        JSONObject message = new JSONObject();
+        JSONObject body = new JSONObject();
+        try {
+            body.putOpt("ptype", "subscriber");
+            body.putOpt("request", "join");
+            body.putOpt("room", roomId);
+            body.putOpt("feed", feedId);
+
+            message.put("body", body);
+            message.putOpt("janus", "message");
+            message.putOpt("transaction", randomString(12));
+            message.putOpt("session_id", sessionId);
+            message.putOpt("handle_id", subscriptionHandleId);
         } catch (JSONException e) {
             e.printStackTrace();
         }
@@ -263,7 +355,11 @@ public class JanusClient implements WebSocketChannel.WebSocketCallback {
                         Transaction cb = transactions.get(transaction);
                         if (cb != null) {
                             try {
-                                cb.onSuccess(obj);
+                                if (cb.getFeedId() != null) {
+                                    cb.onSuccess(obj, cb.getFeedId());
+                                } else {
+                                    cb.onSuccess(obj);
+                                }
                                 transactions.remove(transaction);
                             } catch (Exception e) {
                                 e.printStackTrace();
@@ -308,7 +404,7 @@ public class JanusClient implements WebSocketChannel.WebSocketCallback {
                                 jsep = obj.getJSONObject("jsep");
                             }
                             if (janusCallback != null) {
-                                janusCallback.onMessage(handle.getHandleId(), data, jsep);
+                                janusCallback.onMessage(sender, handle.getHandleId(), data, jsep);
                             }
                         }
                     }
@@ -394,11 +490,19 @@ public class JanusClient implements WebSocketChannel.WebSocketCallback {
 
         void onAttached(BigInteger handleId);
 
+        /**
+         * 订阅回调
+         *
+         * @param subscribeHandleId 订阅HandlerId
+         * @param feedId            订阅 feedId
+         */
+        void onSubscribeAttached(BigInteger subscribeHandleId, BigInteger feedId);
+
         void onDetached(BigInteger handleId);
 
         void onHangup(BigInteger handleId);
 
-        void onMessage(BigInteger handleId, JSONObject msg, JSONObject jsep);
+        void onMessage(BigInteger sender, BigInteger handleId, JSONObject msg, JSONObject jsep);
 
         void onIceCandidate(BigInteger handleId, JSONObject candidate);
 

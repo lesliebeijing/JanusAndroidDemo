@@ -7,4 +7,9 @@
     android:orientation="vertical"
     tools:context=".VideoRoomActivity">
 
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerview"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
 </LinearLayout>

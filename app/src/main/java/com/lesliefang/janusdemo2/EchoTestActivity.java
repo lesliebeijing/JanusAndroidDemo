@@ -111,6 +111,11 @@ public class EchoTestActivity extends AppCompatActivity {
         }
 
         @Override
+        public void onSubscribeAttached(BigInteger handleId, BigInteger feedId) {
+
+        }
+
+        @Override
         public void onDetached(BigInteger handleId) {
             echoHandlerId = null;
         }
@@ -121,7 +126,7 @@ public class EchoTestActivity extends AppCompatActivity {
         }
 
         @Override
-        public void onMessage(BigInteger handleId, JSONObject msg, JSONObject jsep) {
+        public void onMessage(BigInteger sender, BigInteger handleId, JSONObject msg, JSONObject jsep) {
             if (jsep != null) {
                 try {
                     String sdp = jsep.getString("sdp");
@@ -380,7 +385,7 @@ public class EchoTestActivity extends AppCompatActivity {
                 }, sdp);
 
                 if (echoHandlerId != null) {
-                    janusClient.publisherCreateOffer(echoHandlerId, sdp);
+                    janusClient.createOffer(echoHandlerId, sdp);
                 }
             }
 
