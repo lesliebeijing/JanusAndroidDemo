@@ -59,6 +59,7 @@ public class VideoRoomActivity extends AppCompatActivity {
     private AudioTrack audioTrack;
     private VideoTrack videoTrack;
     private VideoCapturer videoCapturer;
+    private VideoSource videoSource;
     private SurfaceTextureHelper surfaceTextureHelper;
 
     EglBase.Context eglBaseContext;
@@ -73,6 +74,8 @@ public class VideoRoomActivity extends AppCompatActivity {
     private VideoItemAdapter adapter;
     RecyclerView recyclerView;
 
+    private boolean isFrontCamera = true;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -80,7 +83,7 @@ public class VideoRoomActivity extends AppCompatActivity {
         recyclerView = findViewById(R.id.recyclerview);
         recyclerView.setLayoutManager(new GridLayoutManager(this, 2));
 
-        videoCapturer = createVideoCapturer();
+        videoCapturer = createVideoCapturer(isFrontCamera);
         if (videoCapturer == null) {
             return;
         }
@@ -92,7 +95,7 @@ public class VideoRoomActivity extends AppCompatActivity {
         audioTrack = peerConnectionFactory.createAudioTrack("101", audioSource);
 
         surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", eglBaseContext);
-        VideoSource videoSource = peerConnectionFactory.createVideoSource(videoCapturer.isScreencast());
+        videoSource = peerConnectionFactory.createVideoSource(videoCapturer.isScreencast());
         videoCapturer.initialize(surfaceTextureHelper, this, videoSource.getCapturerObserver());
         videoCapturer.startCapture(1280, 720, 30);
 
@@ -398,35 +401,33 @@ public class VideoRoomActivity extends AppCompatActivity {
         }
     }
 
-    private VideoCapturer createVideoCapturer() {
+    private VideoCapturer createVideoCapturer(boolean isFront) {
         if (Camera2Enumerator.isSupported(this)) {
-            return createCameraCapturer(new Camera2Enumerator(this));
+            return createCameraCapturer(new Camera2Enumerator(this), isFront);
         } else {
-            return createCameraCapturer(new Camera1Enumerator(true));
+            return createCameraCapturer(new Camera1Enumerator(true), isFront);
         }
     }
 
-    private VideoCapturer createCameraCapturer(CameraEnumerator enumerator) {
+    private VideoCapturer createCameraCapturer(CameraEnumerator enumerator, boolean isFront) {
         final String[] deviceNames = enumerator.getDeviceNames();
 
-        // First, try to find front facing camera
-        Log.d(TAG, "Looking for front facing cameras.");
-        for (String deviceName : deviceNames) {
-            if (enumerator.isFrontFacing(deviceName)) {
-                VideoCapturer videoCapturer = enumerator.createCapturer(deviceName, null);
-                if (videoCapturer != null) {
-                    return videoCapturer;
+        if (isFront) {
+            for (String deviceName : deviceNames) {
+                if (enumerator.isFrontFacing(deviceName)) {
+                    VideoCapturer videoCapturer = enumerator.createCapturer(deviceName, null);
+                    if (videoCapturer != null) {
+                        return videoCapturer;
+                    }
                 }
             }
-        }
-
-        // Front facing camera not found, try something else
-        Log.d(TAG, "Looking for other cameras.");
-        for (String deviceName : deviceNames) {
-            if (!enumerator.isFrontFacing(deviceName)) {
-                VideoCapturer videoCapturer = enumerator.createCapturer(deviceName, null);
-                if (videoCapturer != null) {
-                    return videoCapturer;
+        } else {
+            for (String deviceName : deviceNames) {
+                if (!enumerator.isFrontFacing(deviceName)) {
+                    VideoCapturer videoCapturer = enumerator.createCapturer(deviceName, null);
+                    if (videoCapturer != null) {
+                        return videoCapturer;
+                    }
                 }
             }
         }
@@ -663,7 +664,39 @@ public class VideoRoomActivity extends AppCompatActivity {
         @Override
         public VideoItemHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
             View itemView = LayoutInflater.from(parent.getContext()).inflate(R.layout.videoroom_item, parent, false);
-            return new VideoItemHolder(itemView);
+            VideoItemHolder holder = new VideoItemHolder(itemView);
+            holder.tvMute.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    boolean enabled = audioTrack.enabled();
+                    if (enabled) {
+                        holder.tvMute.setText("静音");
+                    } else {
+                        holder.tvMute.setText("取消静音");
+                    }
+                    audioTrack.setEnabled(!enabled);
+                }
+            });
+            holder.tvSwitchCamera.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (videoCapturer != null) {
+                        try {
+                            videoCapturer.stopCapture();
+                            videoCapturer.dispose();
+                            isFrontCamera = !isFrontCamera;
+                            videoCapturer = createVideoCapturer(isFrontCamera);
+                            if (videoCapturer != null) {
+                                videoCapturer.initialize(surfaceTextureHelper, VideoRoomActivity.this, videoSource.getCapturerObserver());
+                                videoCapturer.startCapture(1280, 720, 30);
+                            }
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+            });
+            return holder;
         }
 
         @Override
@@ -678,20 +711,10 @@ public class VideoRoomActivity extends AppCompatActivity {
             }
             if (userName.equals(videoItem.display)) {
                 holder.tvMute.setVisibility(View.VISIBLE);
-                holder.tvMute.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        boolean enabled = audioTrack.enabled();
-                        if (enabled) {
-                            holder.tvMute.setText("静音");
-                        } else {
-                            holder.tvMute.setText("取消静音");
-                        }
-                        audioTrack.setEnabled(!enabled);
-                    }
-                });
+                holder.tvSwitchCamera.setVisibility(View.VISIBLE);
             } else {
                 holder.tvMute.setVisibility(View.INVISIBLE);
+                holder.tvSwitchCamera.setVisibility(View.INVISIBLE);
             }
         }
 
@@ -705,6 +728,7 @@ public class VideoRoomActivity extends AppCompatActivity {
         SurfaceViewRenderer surfaceViewRenderer;
         TextView tvUserId;
         TextView tvMute;
+        TextView tvSwitchCamera;
 
         VideoItemHolder(@NonNull View itemView) {
             super(itemView);
@@ -713,7 +737,8 @@ public class VideoRoomActivity extends AppCompatActivity {
             surfaceViewRenderer.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FILL);
             surfaceViewRenderer.setKeepScreenOn(true);
             tvUserId = itemView.findViewById(R.id.tv_userid);
-            tvMute = findViewById(R.id.tv_mute);
+            tvMute = itemView.findViewById(R.id.tv_mute);
+            tvSwitchCamera = itemView.findViewById(R.id.tv_switch_camera);
         }
     }
 
