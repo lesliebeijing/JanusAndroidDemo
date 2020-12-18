@@ -676,6 +676,23 @@ public class VideoRoomActivity extends AppCompatActivity {
             if (videoItem.display != null) {
                 holder.tvUserId.setText(videoItem.display);
             }
+            if (userName.equals(videoItem.display)) {
+                holder.tvMute.setVisibility(View.VISIBLE);
+                holder.tvMute.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        boolean enabled = audioTrack.enabled();
+                        if (enabled) {
+                            holder.tvMute.setText("静音");
+                        } else {
+                            holder.tvMute.setText("取消静音");
+                        }
+                        audioTrack.setEnabled(!enabled);
+                    }
+                });
+            } else {
+                holder.tvMute.setVisibility(View.INVISIBLE);
+            }
         }
 
         @Override
@@ -687,6 +704,7 @@ public class VideoRoomActivity extends AppCompatActivity {
     class VideoItemHolder extends RecyclerView.ViewHolder {
         SurfaceViewRenderer surfaceViewRenderer;
         TextView tvUserId;
+        TextView tvMute;
 
         VideoItemHolder(@NonNull View itemView) {
             super(itemView);
@@ -695,6 +713,7 @@ public class VideoRoomActivity extends AppCompatActivity {
             surfaceViewRenderer.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FILL);
             surfaceViewRenderer.setKeepScreenOn(true);
             tvUserId = itemView.findViewById(R.id.tv_userid);
+            tvMute = findViewById(R.id.tv_mute);
         }
     }
 
