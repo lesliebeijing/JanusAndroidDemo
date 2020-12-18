@@ -145,6 +145,18 @@ public class VideoRoomActivity extends AppCompatActivity {
         videoCapturer.dispose();
         surfaceTextureHelper.dispose();
         janusClient.disConnect();
+
+        for (VideoItem videoItem : videoItemList) {
+            if (videoItem.peerConnection != null) {
+                videoItem.peerConnection.close();
+            }
+            if (videoItem.videoTrack != null) {
+                videoItem.videoTrack.dispose();
+            }
+            if (videoItem.surfaceViewRenderer != null) {
+                videoItem.surfaceViewRenderer.release();
+            }
+        }
     }
 
     private JanusClient.JanusCallback janusCallback = new JanusClient.JanusCallback() {
