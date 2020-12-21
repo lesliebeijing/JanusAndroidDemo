@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">JanusDemo2</string>
+    <string name="app_name">Janus视频会议</string>
     <string name="title_activity_main">MainActivity</string>
     <!--
     This string is used for square devices and overridden by hello_world in

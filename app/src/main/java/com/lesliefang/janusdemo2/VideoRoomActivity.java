@@ -68,7 +68,7 @@ public class VideoRoomActivity extends AppCompatActivity {
     BigInteger videoRoomHandlerId;
 
     Room room = new Room(1234); // 默认房间
-    final String userName = "fangniu";
+    String userName;
 
     private List<VideoItem> videoItemList = new ArrayList<>();
     private VideoItemAdapter adapter;
@@ -82,6 +82,7 @@ public class VideoRoomActivity extends AppCompatActivity {
         setContentView(R.layout.activity_video_room);
         recyclerView = findViewById(R.id.recyclerview);
         recyclerView.setLayoutManager(new GridLayoutManager(this, 2));
+        userName = getIntent().getStringExtra("userName");
 
         videoCapturer = createVideoCapturer(isFrontCamera);
         if (videoCapturer == null) {

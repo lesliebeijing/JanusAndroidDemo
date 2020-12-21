@@ -6,16 +6,30 @@
     android:layout_height="match_parent"
     android:orientation="vertical">
 
-    <Button
-        android:id="@+id/btn_echotest"
+    <!--    <Button-->
+    <!--        android:id="@+id/btn_echotest"-->
+    <!--        android:layout_width="match_parent"-->
+    <!--        android:layout_height="wrap_content"-->
+    <!--        android:text="ECHO TEST" />-->
+
+    <!--    <Button-->
+    <!--        android:id="@+id/btn_videoroom"-->
+    <!--        android:layout_width="match_parent"-->
+    <!--        android:layout_height="wrap_content"-->
+    <!--        android:text="VIDEO ROOM" />-->
+
+    <EditText
+        android:id="@+id/et_username"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="ECHO TEST" />
+        android:layout_marginTop="10dp"
+        android:hint="请输入用户名" />
 
     <Button
-        android:id="@+id/btn_videoroom"
+        android:id="@+id/btn_start"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="VIDEO ROOM" />
+        android:layout_marginTop="20dp"
+        android:text="开始" />
 
 </LinearLayout>
